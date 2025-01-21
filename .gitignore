@@ -1,0 +1,15 @@
+# Ignore IDE-specific files and folders
+.idea/
+
+# Ignore Python bytecode and cache files
+__pycache__/
+app/__pycache__/
+db/__pycache__/
+
+# Ignore binary files or directories
+bin/
+
+# Ignore library files (e.g., virtual environment dependencies)
+lib/
+
+pyvenv.cfg

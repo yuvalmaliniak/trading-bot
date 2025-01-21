@@ -1,5 +1,5 @@
 from pymongo import MongoClient
-from bson import ObjectId
+from bson.objectid import ObjectId
 import logging
 from pydantic import BaseModel, EmailStr, Field
 
@@ -16,8 +16,8 @@ class UserModel(BaseModel):
     profit: float = 0.0
 
 class Database:
-    def __init__(self):
-        self.connection_string = "mongodb://mongo:27017/"
+    def __init__(self,db_connection_str):
+        self.connection_string = db_connection_str
         self.client = MongoClient(self.connection_string)
         self.db = self.client["trading_app"]
         self.users_collection = self.db["users"]
