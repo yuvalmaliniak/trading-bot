@@ -13,3 +13,6 @@ bin/
 lib/
 
 pyvenv.cfg
+
+# Ignore environment files for security
+.env

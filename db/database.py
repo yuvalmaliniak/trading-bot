@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import logging
+from datetime import datetime, timedelta
 from pydantic import BaseModel, EmailStr, Field
 
 # Logging setup
@@ -22,6 +23,7 @@ class Database:
         self.db = self.client["trading_app"]
         self.users_collection = self.db["users"]
         self.users_collection.create_index("email", unique=True)
+        self.tweets_collection = self.db["tweets"]
 
     def insert_user(self, user_data):
         try:
@@ -63,3 +65,55 @@ class Database:
         except Exception as e:
             logger.error(f"Error fetching users: {e}")
             return []
+
+    def insert_tweets(self, tweets_list):
+        """
+        Inserts a list of tweets items into the `tweets` collection.
+
+        :param tweets_list: List of dictionaries with keys: 'snippet', 'published_date'.
+        """
+        try:
+            for tweet in tweets_list:
+                # Calculate the actual datetime from 'hours ago'
+                hours_ago = int(tweet['published_date'].split()[0])
+                tweet_date = datetime.now() - timedelta(hours=hours_ago)
+
+                # Prepare the document for insertion
+                tweet_document = {
+                    "subject": tweet['snippet'],
+                    "date": tweet_date,
+                    "link": tweet.get("link"),
+                    "thumbnail": tweet.get("thumbnail"),
+                }
+
+                # Insert the document into the collection
+                self.tweets_collection.insert_one(tweet_document)
+            logger.info("Tweet inserted successfully.")
+        except Exception as e:
+            logger.error(f"Error inserting Tweets: {e}")
+
+    def get_all_tweets(self):
+        """
+        Retrieves all tweets from the `tweets` collection.
+
+        :return: List of tweets documents.
+        """
+        try:
+            return list(self.tweets_collection.find())
+        except Exception as e:
+            logger.error(f"Error fetching tweets: {e}")
+            return []
+
+    def delete_tweets(self, tweet_id):
+        """
+        Deletes a specific tweet item by its ObjectId.
+
+        :param tweet_id: The ObjectId of the tweet item to delete.
+        :return: True if deleted, False otherwise.
+        """
+        try:
+            result = self.tweets_collection.delete_one({"_id": ObjectId(tweet_id)})
+            return result.deleted_count > 0
+        except Exception as e:
+            logger.error(f"Error deleting tweet: {e}")
+            return False
