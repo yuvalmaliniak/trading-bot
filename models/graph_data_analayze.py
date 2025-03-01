@@ -1,29 +1,89 @@
 import yfinance as yf
 import pandas as pd
+import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 
+# Function to fetch stock data
 def fetch_stock_data(symbol: str, start_date: str, end_date: str):
-
     data = yf.download(symbol, start=start_date, end=end_date)
-    
     data = data[['Open', 'High', 'Low', 'Close', 'Volume']]
-    
-    # Reset index to include Date column
     data.reset_index(inplace=True)
+    return data
 
-    return data[['Date', 'Open', 'High', 'Low', 'Close', 'Volume']]
+# Function to calculate Simple Moving Average (SMA)
+def calculate_sma(df, window):
+    df[f'SMA_{window}'] = df['Close'].rolling(window=window).mean()
+    return df
 
-def save_data_to_csv(data, symbol):
+# Function to calculate Relative Strength Index (RSI)
+def calculate_rsi(df, period=14):
+    delta = df['Close'].diff(1)
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    
+    rs = gain / loss
+    df['RSI_14'] = 100 - (100 / (1 + rs))
+    return df
+
+# Function to calculate Bollinger Bands
+def calculate_bollinger_bands(df, window=20, num_std=2):
+    rolling_mean = df['Close'].rolling(window=window).mean()
+    rolling_std = df['Close'].rolling(window=window).std()
+    
+    df['BBL_20'] = rolling_mean - (num_std * rolling_std)  # Lower Band
+    df['BBM_20'] = rolling_mean                           # Middle Band
+    df['BBU_20'] = rolling_mean + (num_std * rolling_std)  # Upper Band
+    
+    return df
+
+# Function to normalize data using MinMaxScaler
+def normalize_data(df):
+    scaler = MinMaxScaler()
+    columns_to_normalize = ['Open', 'High', 'Low', 'Close', 'Volume', 
+                            'SMA_50', 'SMA_200', 'RSI_14', 'BBL_20', 'BBM_20', 'BBU_20']
+
+    # Ensure required columns exist before normalizing
+    for col in columns_to_normalize:
+        if col not in df.columns:
+            df[col] = np.nan
+
+    # Fill NaN values to avoid dropping rows
+    df.ffill(inplace=True)  # Forward-fill missing values
+    df.bfill(inplace=True)  # Backward-fill missing values)  # Backward-fill in case of leading NaNs
+    df.fillna(0, inplace=True)  # Ensure no NaNs remain
+
+    df[columns_to_normalize] = scaler.fit_transform(df[columns_to_normalize])
+    return df
+
+# Function to save processed data to CSV
+def save_data_to_csv(df, symbol):
     output_file = f"{symbol}_processed_data.csv"
-    data.to_csv(output_file, index=False, header=True)
-    print(f"Data saved to {output_file}")
+    df.to_csv(output_file, index=False)
+    print(f"Processed data saved to {output_file}")
 
+# Main process
 if __name__ == "__main__":
-    stock_symbol = "SPY"  
-    start_date = "2022-01-01"
-    end_date = "2023-12-31"
+    stock_symbol = "SPY"
+    start_date = "1960-01-01"
+    end_date = "2024-12-31"
 
+    # Fetch stock data
     stock_data = fetch_stock_data(stock_symbol, start_date, end_date)
+
     if stock_data is not None and not stock_data.empty:
+        stock_data = calculate_sma(stock_data, window=50)
+        stock_data = calculate_sma(stock_data, window=200)
+        stock_data = calculate_rsi(stock_data, period=14)
+        stock_data = calculate_bollinger_bands(stock_data, window=20)
+
+        print("Before normalization:")
+        print(stock_data.head())
+
+        stock_data = normalize_data(stock_data)
+
+        print("After normalization:")
+        print(stock_data.head())
+
         save_data_to_csv(stock_data, stock_symbol)
     else:
         print("No data found for the given symbol and date range.")
