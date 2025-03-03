@@ -3,44 +3,53 @@ import gym_anytrading
 from stable_baselines3 import PPO
 import pandas as pd
 import numpy as np
+import os
 from datetime import datetime
 
+# Load the dataset
 df = pd.read_csv('SPY_processed_data.csv')
 df['Date'] = pd.to_datetime(df['Date'])
 df.set_index('Date', inplace=True)
 
-# Load the trained model for testing
-model = PPO.load("PPO_trading_model")
+# Load the trained model
+model = PPO.load("PPO_trading_model", custom_objects={"clip_range": 0.2, "lr_schedule": lambda _: 0.0003})
 
-# Step-by-step evaluation of the trained model
-eval_env = gym.make('stocks-v0', df=df, frame_bound=(7538, 7787), window_size=50, render_mode="human")
+# Define window size
+window_size = 50
 
-# Dictionary to store actions with corresponding dates
+# Dictionary to store predictions
 actions_dict = {}
 
-# Reset the environment and get the initial observation
-obs, _ = eval_env.reset()
+# Iterate through all dates in the dataset where we have enough past data
+for i in range(7538, len(df)):  
+    today = df.index[i]  # Target date for prediction
 
-# Get the date range for the selected data
-date_range = df.index[7538:7787]
+    # Select only past data (excluding today)
+    past_data = df.iloc[:i-1].copy()
 
-for i in range(len(date_range)):
+    # Create a new environment using only past data
+    eval_env = gym.make(
+        'stocks-v0', 
+        df=past_data, 
+        frame_bound=(max(0, len(past_data) - window_size), len(past_data)), 
+        window_size=window_size, 
+        render_mode=None
+    )
+    obs, _ = eval_env.reset()
+
+    # Predict action using only past data
     obs = obs[np.newaxis, ...]  # Expand dimensions for model input
-    action, _states = model.predict(obs)
-    
-    # Store the action corresponding to the current date
-    current_date = date_range[i]
-    actions_dict[current_date] = action[0]
+   
+    action, _ = model.predict(obs)
 
-    obs, reward, terminated, truncated, info = eval_env.step(action)
-    
-    if terminated or truncated:
-        print("Evaluation completed.")
-        print("Final Info:", info)
-        break
+    # Store prediction
+    actions_dict[today] = action[0]
 
-# Save the actions along with dates to a CSV file
+# Convert predictions to DataFrame
 df_actions = pd.DataFrame(list(actions_dict.items()), columns=["Date", "Action"])
-df_actions.to_csv("actions_by_date.csv", index=False)
 
-print("Actions and corresponding dates saved to actions_by_date.csv")
+# Save predictions to CSV
+output_file = "predictions_by_date.csv"
+df_actions.to_csv(output_file, index=False)
+
+print(f"✅ Predicted actions saved to {output_file}")

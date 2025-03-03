@@ -1,7 +1,9 @@
+from datetime import datetime, timedelta
 import yfinance as yf
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+import os
 
 # Function to fetch stock data
 def fetch_stock_data(symbol: str, start_date: str, end_date: str):
@@ -55,35 +57,58 @@ def normalize_data(df):
     df[columns_to_normalize] = scaler.fit_transform(df[columns_to_normalize])
     return df
 
+# Function to load existing data if available
+def load_existing_data(file_path):
+    if os.path.exists(file_path):
+        df = pd.read_csv(file_path)
+        df['Date'] = pd.to_datetime(df['Date'])
+        return df
+    return None
+
 # Function to save processed data to CSV
 def save_data_to_csv(df, symbol):
     output_file = f"{symbol}_processed_data.csv"
     df.to_csv(output_file, index=False)
     print(f"Processed data saved to {output_file}")
 
-# Main process
+# Function to append new data and update CSV
+def update_data(symbol):
+    file_path = f"{symbol}_processed_data.csv"
+
+    # Load existing data
+    existing_data = load_existing_data(file_path)
+
+    if existing_data is not None and not existing_data.empty:
+        last_date = existing_data['Date'].max().date()
+    else:
+        last_date = datetime(1960, 1, 1).date()  # Default start date
+
+    start_date = (last_date + timedelta(days=1)).strftime("%Y-%m-%d")
+    end_date = datetime.today().strftime("%Y-%m-%d")
+
+    new_data = fetch_stock_data(symbol, start_date, end_date)
+
+    if new_data is not None and not new_data.empty:
+        # Combine new and existing data **before calculating indicators**
+        if existing_data is not None:
+            combined_data = pd.concat([existing_data, new_data], ignore_index=True)
+        else:
+            combined_data = new_data
+
+        # Compute indicators using the full dataset
+        combined_data = calculate_sma(combined_data, window=50)
+        combined_data = calculate_sma(combined_data, window=200)
+        combined_data = calculate_rsi(combined_data, period=14)
+        combined_data = calculate_bollinger_bands(combined_data, window=20)
+        combined_data = normalize_data(combined_data)
+
+        # Save updated dataset **without duplicate headers**
+        combined_data.to_csv(file_path, index=False)
+        print(f"✅ Updated dataset saved to {file_path}")
+    else:
+        print("⚠️ No new data to update.")
+
+# Run the daily update
 if __name__ == "__main__":
     stock_symbol = "SPY"
-    start_date = "1960-01-01"
-    end_date = "2024-12-31"
-
-    # Fetch stock data
-    stock_data = fetch_stock_data(stock_symbol, start_date, end_date)
-
-    if stock_data is not None and not stock_data.empty:
-        stock_data = calculate_sma(stock_data, window=50)
-        stock_data = calculate_sma(stock_data, window=200)
-        stock_data = calculate_rsi(stock_data, period=14)
-        stock_data = calculate_bollinger_bands(stock_data, window=20)
-
-        print("Before normalization:")
-        print(stock_data.head())
-
-        stock_data = normalize_data(stock_data)
-
-        print("After normalization:")
-        print(stock_data.head())
-
-        save_data_to_csv(stock_data, stock_symbol)
-    else:
-        print("No data found for the given symbol and date range.")
+    update_data(stock_symbol)
