@@ -29,7 +29,7 @@ ALPACA_CREDS = {
 }
 
 # Load model actions from CSV file
-csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../models/actions_by_date.csv'))
+csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../models/predictions_by_date.csv'))
 actions_df = pd.read_csv(csv_path)
 
 # Ensure date formatting consistency
@@ -81,8 +81,8 @@ class MLTrader(Strategy):
         sentiment_score = 1 if sentiment == "positive" else -1
 
         # Weighted decision: 70% sentiment * probability, 30% PPO model
-        weighted_decision = (0.7 * float(sentiment_score) * float(probability)) + (
-                    0.3 * (1 if model_action == 1 else -1))
+        weighted_decision = (0.8 * float(sentiment_score) * float(probability)) + (
+                    0.2 * (1 if model_action == 1 else -1))
         print(weighted_decision)
 
         if cash > last_price:
@@ -114,15 +114,15 @@ class MLTrader(Strategy):
                 self.last_trade = "sell"
 
 
-start_date = datetime(2023, 1, 1)
-end_date = datetime(2023, 12, 31)
+start_date = datetime(2024, 1, 1)
+end_date = datetime(2025, 1, 1)
 broker = Alpaca(ALPACA_CREDS)
 strategy = MLTrader(name='mlstrat', broker=broker,
                     parameters={"symbol": "SPY",
-                                "cash_at_risk": .6})
+                                "cash_at_risk": .3})
 strategy.backtest(
     YahooDataBacktesting,
     start_date,
     end_date,
-    parameters={"symbol": "SPY", "cash_at_risk": .6}
+    parameters={"symbol": "SPY", "cash_at_risk": .3}
 )

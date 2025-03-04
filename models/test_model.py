@@ -25,7 +25,7 @@ for i in range(7538, len(df)):
     today = df.index[i]  # Target date for prediction
 
     # Select only past data (excluding today)
-    past_data = df.iloc[:i-1].copy()
+    past_data = df.iloc[:i].copy()
 
     # Create a new environment using only past data
     eval_env = gym.make(

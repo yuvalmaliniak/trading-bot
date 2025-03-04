@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import logging
+from pymongo.errors import DuplicateKeyError
 from datetime import datetime, timedelta
 from pydantic import BaseModel, EmailStr, Field
 
@@ -30,6 +31,9 @@ class Database:
             validated_user = UserModel(**user_data).dict()
             result = self.users_collection.insert_one(validated_user)
             return str(result.inserted_id)
+        except DuplicateKeyError:
+            logger.error(f"Error inserting user: Duplicate email {user_data['email']}")
+            return {"error": "Duplicate email. This email is already registered."}
         except Exception as e:
             logger.error(f"Error inserting user: {e}")
             return False
