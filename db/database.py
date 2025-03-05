@@ -3,8 +3,7 @@ from bson.objectid import ObjectId
 import logging
 from pymongo.errors import DuplicateKeyError
 from datetime import datetime, timedelta
-from pydantic import BaseModel, EmailStr, Field
-
+from pydantic import BaseModel, EmailStr, Field, SecretStr
 # Logging setup
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -12,6 +11,8 @@ logger = logging.getLogger(__name__)
 class UserModel(BaseModel):
     email: EmailStr
     balance: float = 0.0
+    api_key : SecretStr
+    api_secret : SecretStr
     cash_at_risk: float = 0.0
     trade_history: list = Field(default_factory=list)
     current_holdings: dict = Field(default_factory=dict)
@@ -29,6 +30,8 @@ class Database:
     def insert_user(self, user_data):
         try:
             validated_user = UserModel(**user_data).dict()
+            validated_user["api_key"] = validated_user["api_key"].get_secret_value()
+            validated_user["api_secret"] = validated_user["api_secret"].get_secret_value()
             result = self.users_collection.insert_one(validated_user)
             return str(result.inserted_id)
         except DuplicateKeyError:
@@ -40,10 +43,22 @@ class Database:
 
     def get_user(self, _id):
         try:
-            return self.users_collection.find_one({"_id": ObjectId(_id)})
+            user = self.users_collection.find_one({"_id": ObjectId(_id)},{"_id": 0, "api_secret": 0})  # Hide API secret
+            return user if user else {"error": "User not found"}
         except Exception as e:
             logger.error(f"Error fetching user: {e}")
-            return False
+            return {"error": "Invalid user ID"}
+
+    def get_user_api_keys(self, email):
+        """
+        Retrieves API key and secret for a user.
+        """
+        try:
+            user = self.users_collection.find_one({"email": email}, {"_id": 0, "api_key": 1, "api_secret": 1})
+            return user if user else {"error": "User not found"}
+        except Exception as e:
+            logger.error(f"Error fetching API keys: {e}")
+            return {"error": "Database error"}
 
     def update_user(self, _id, update_data):
         try:

@@ -1,7 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from db.database import Database
 from app.twitter_classification import fetch_tweets_with_serpapi
-
+from datetime import datetime, timedelta
+from app.user import User
+import time
 app = FastAPI()
 db_connection_str = "mongodb://localhost:27017"
 db = Database(db_connection_str)
@@ -22,10 +24,19 @@ db = Database(db_connection_str)
 async def create_account(user_data: dict):
     """Create a new user account."""
     result = db.insert_user(user_data)
-
-    if isinstance(result, dict) and "error" in result:  # If an error message is returned
+    print(result)
+    if isinstance(result, dict) and "error" in result:  # If insert_user() returns an error
         raise HTTPException(status_code=400, detail=result["error"])
 
+    # Fetch user from DB to verify it was stored
+    user_data = db.get_user(result)
+    print(user_data)
+    if not user_data:  # If get_user() fails, return an error
+        raise HTTPException(status_code=500, detail="User could not be retrieved after creation")
+
+    user = User(user_data, db, datetime.today())
+    time.sleep(5)
+    user.start_trading(datetime.today() - timedelta(days=21), datetime.today())
     return {"message": "User created successfully", "user_id": result}
 
 

@@ -12,21 +12,23 @@ from datetime import datetime
 from alpaca_trade_api import REST
 from timedelta import Timedelta
 from models.finbert_model import estimate_sentiment
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 import os
 import pandas as pd
 
-load_dotenv()
+from app.user import User
 
-API_KEY = os.getenv("API_KEY")
-API_SECRET = os.getenv("API_SECRET")
+# load_dotenv()
+#
+# API_KEY = os.getenv("API_KEY")
+# API_SECRET = os.getenv("API_SECRET")
 BASE_URL = "https://paper-api.alpaca.markets"
-
-ALPACA_CREDS = {
-    "API_KEY": API_KEY,
-    "API_SECRET": API_SECRET,
-    "PAPER": True
-}
+#
+# ALPACA_CREDS = {
+#     "API_KEY": API_KEY,
+#     "API_SECRET": API_SECRET,
+#     "PAPER": True
+# }
 
 # Load model actions from CSV file
 csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../models/predictions_by_date.csv'))
@@ -36,19 +38,20 @@ actions_df = pd.read_csv(csv_path)
 actions_df['Date'] = pd.to_datetime(actions_df['Date']).dt.strftime('%Y-%m-%d')
 actions_df['Action'] = actions_df['Action'].astype(int)
 actions_dict = dict(zip(actions_df['Date'], actions_df['Action']))
-print(actions_dict)
 
 
 class MLTrader(Strategy):
-    def initialize(self, symbol: str = "SPY", cash_at_risk: float = .5):
+    def initialize(self, symbol: str = "SPY", cash_at_risk =0.0):
         self.symbol = symbol
+        self.cash_at_risk = cash_at_risk
+        print("cash_at_risk is:", cash_at_risk)
         self.sleeptime = "24H"
         self.last_trade = None
-        self.cash_at_risk = cash_at_risk
-        self.api = REST(base_url=BASE_URL, key_id=API_KEY, secret_key=API_SECRET)
+
 
     def position_sizing(self):
         cash = self.get_cash()
+        print("cash is:", cash)
         last_price = self.get_last_price(self.symbol)
         quantity = round(cash * self.cash_at_risk / last_price, 0)
         return cash, last_price, quantity
@@ -114,15 +117,18 @@ class MLTrader(Strategy):
                 self.last_trade = "sell"
 
 
-start_date = datetime(2024, 1, 1)
-end_date = datetime(2025, 1, 1)
-broker = Alpaca(ALPACA_CREDS)
-strategy = MLTrader(name='mlstrat', broker=broker,
-                    parameters={"symbol": "SPY",
-                                "cash_at_risk": .3})
-strategy.backtest(
-    YahooDataBacktesting,
-    start_date,
-    end_date,
-    parameters={"symbol": "SPY", "cash_at_risk": .3}
-)
+# start_date = datetime(2024, 1, 1)
+# end_date = datetime(2025, 1, 1)
+# broker = Alpaca(ALPACA_CREDS)
+# strategy = MLTrader(name='mlstrat', broker=broker,
+#                     parameters={"symbol": "SPY",
+#                                 "cash_at_risk": .3})
+# strategy.backtest(
+#     YahooDataBacktesting,
+#     start_date,
+#     end_date,
+#     parameters={"symbol": "SPY", "cash_at_risk": .3}
+# )
+
+if __name__ == "__main__":
+    pass

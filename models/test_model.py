@@ -7,12 +7,18 @@ import os
 from datetime import datetime
 
 # Load the dataset
-df = pd.read_csv('SPY_processed_data.csv')
+csv_path = os.path.join(os.path.dirname(__file__), "SPY_processed_data.csv")
+df = pd.read_csv(csv_path)
+
+
+#df = pd.read_csv('SPY_processed_data.csv')
 df['Date'] = pd.to_datetime(df['Date'])
 df.set_index('Date', inplace=True)
 
 # Load the trained model
-model = PPO.load("PPO_trading_model", custom_objects={"clip_range": 0.2, "lr_schedule": lambda _: 0.0003})
+ppo_path = os.path.join(os.path.dirname(__file__), "PPO_trading_model")
+model = PPO.load(ppo_path, custom_objects={"clip_range": 0.2, "lr_schedule": lambda _: 0.0003})
+#model = PPO.load("PPO_trading_model", custom_objects={"clip_range": 0.2, "lr_schedule": lambda _: 0.0003})
 
 # Define window size
 window_size = 50
@@ -53,3 +59,6 @@ output_file = "predictions_by_date.csv"
 df_actions.to_csv(output_file, index=False)
 
 print(f"✅ Predicted actions saved to {output_file}")
+
+if __name__ == "__main__":
+    pass
