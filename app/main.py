@@ -24,13 +24,11 @@ db = Database(db_connection_str)
 async def create_account(user_data: dict):
     """Create a new user account."""
     result = db.insert_user(user_data)
-    print(result)
     if isinstance(result, dict) and "error" in result:  # If insert_user() returns an error
         raise HTTPException(status_code=400, detail=result["error"])
 
     # Fetch user from DB to verify it was stored
     user_data = db.get_user(result)
-    print(user_data)
     if not user_data:  # If get_user() fails, return an error
         raise HTTPException(status_code=500, detail="User could not be retrieved after creation")
 

@@ -16,8 +16,6 @@ from models.finbert_model import estimate_sentiment
 import os
 import pandas as pd
 
-from app.user import User
-
 # load_dotenv()
 #
 # API_KEY = os.getenv("API_KEY")
@@ -41,17 +39,19 @@ actions_dict = dict(zip(actions_df['Date'], actions_df['Action']))
 
 
 class MLTrader(Strategy):
-    def initialize(self, symbol: str = "SPY", cash_at_risk =0.0):
-        self.symbol = symbol
-        self.cash_at_risk = cash_at_risk
-        print("cash_at_risk is:", cash_at_risk)
-        self.sleeptime = "24H"
-        self.last_trade = None
 
+
+    def initialize(self):
+        print(self.get_parameters())
+        self.symbol = self.get_parameters()["symbol"]
+        self.cash_at_risk = self.get_parameters()["cash_at_risk"]
+        self.sleeptime = "24H" 
+        self.last_trade = None
+        
+        self.api = REST(base_url=BASE_URL, key_id=self.get_parameters()["api_key"], secret_key= self.get_parameters()["api_secret"])
 
     def position_sizing(self):
         cash = self.get_cash()
-        print("cash is:", cash)
         last_price = self.get_last_price(self.symbol)
         quantity = round(cash * self.cash_at_risk / last_price, 0)
         return cash, last_price, quantity
