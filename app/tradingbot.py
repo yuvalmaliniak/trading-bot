@@ -27,22 +27,27 @@ BASE_URL = "https://paper-api.alpaca.markets"
 #     "API_SECRET": API_SECRET,
 #     "PAPER": True
 # }
+# List of stock symbols to process
+stock_symbols = ["SPY", "AAPL"]
+# Dictionary to store actions for each symbol
+actions_dicts = {}
 
-# Load model actions from CSV file
-csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../models/predictions_by_date.csv'))
-actions_df = pd.read_csv(csv_path)
-
-# Ensure date formatting consistency
-actions_df['Date'] = pd.to_datetime(actions_df['Date']).dt.strftime('%Y-%m-%d')
-actions_df['Action'] = actions_df['Action'].astype(int)
-actions_dict = dict(zip(actions_df['Date'], actions_df['Action']))
-
+# load prediction csv for each symbol
+for symbol in stock_symbols:
+    csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), f"../models/{symbol}_predictions.csv"))
+    
+    if os.path.exists(csv_path):
+        actions_df = pd.read_csv(csv_path)
+        actions_df['Date'] = pd.to_datetime(actions_df['Date']).dt.strftime('%Y-%m-%d')
+        actions_df['Action'] = actions_df['Action'].astype(int)
+        actions_dicts[symbol] = dict(zip(actions_df['Date'], actions_df['Action']))
+    else:
+        print(f"No predictions file found for {symbol}, skipping.")
+        actions_dicts[symbol] = {}  
 
 class MLTrader(Strategy):
 
-
     def initialize(self):
-        print(self.get_parameters())
         self.symbol = self.get_parameters()["symbol"]
         self.cash_at_risk = self.get_parameters()["cash_at_risk"]
         self.sleeptime = "24H" 
@@ -76,12 +81,17 @@ class MLTrader(Strategy):
 
         # Get today's action from the PPO model
         today_str = self.get_datetime().strftime('%Y-%m-%d')
-        model_action = actions_dict.get(today_str, 0)  # 1 = buy, 0 = sell
+        model_action = actions_dicts.get(self.symbol, {}).get(today_str, 0)  # 1 = buy, 0 = sell
         print("date is:", today_str)
         print("result:", model_action)
 
         # Convert sentiment into numerical representation
-        sentiment_score = 1 if sentiment == "positive" else -1
+        if sentiment == "neutral":
+            sentiment_score = 0
+        elif sentiment == "positive":
+            sentiment_score = 1
+        else:
+            sentiment_score = -1
 
         # Weighted decision: 70% sentiment * probability, 30% PPO model
         weighted_decision = (0.8 * float(sentiment_score) * float(probability)) + (
