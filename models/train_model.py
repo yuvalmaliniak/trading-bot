@@ -14,7 +14,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 
-df = pd.read_csv('SPY_processed_data.csv')
+df = pd.read_csv('AAPL_processed_data.csv')
 df['Date'] = pd.to_datetime(df['Date'])
 df.set_index('Date', inplace=True)
 
@@ -27,12 +27,12 @@ model = PPO("MlpPolicy", env, verbose=1, gamma=0.99, batch_size=256)
 
 # Stop training when the average reward reaches the threshold
 stop_callback = StopTrainingOnRewardThreshold(reward_threshold=1000, verbose=1)
-eval_callback = EvalCallback(env, callback_on_new_best=stop_callback, eval_freq=50000, verbose=1)
+eval_callback = EvalCallback(env, callback_on_new_best=stop_callback, eval_freq=500000, verbose=1)
 
 # Train the model with the callback
 model.learn(total_timesteps=200000000, callback=eval_callback)
 
 # Save the trained model
-model.save("PPO_trading_model")
+model.save("PPO_trading_model_AAPL")
 
 print("Training completed successfully!")
