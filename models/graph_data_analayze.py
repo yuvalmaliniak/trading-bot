@@ -57,11 +57,16 @@ def normalize_data(df):
     df[columns_to_normalize] = scaler.fit_transform(df[columns_to_normalize])
     return df
 
-# Function to save processed data to CSV
-def save_data_to_csv(df, symbol):
-    output_file = f"{symbol}_processed_data.csv"
-    df.to_csv(output_file, index=False)
-    print(f"Processed data saved to {output_file}")
+# Function to remove second line from CSV
+def remove_second_line(file_path):
+    with open(file_path, "r") as f:
+        lines = f.readlines()
+    
+    if len(lines) > 1:
+        with open(file_path, "w") as f:
+            f.writelines([lines[0]] + lines[2:])  # Keep first line, skip second
+    print(f"✅ Cleaned second line from {file_path}")
+
 
 # Function to append new data and update CSV
 def update_data(symbol):
@@ -83,6 +88,7 @@ def update_data(symbol):
 
         # Save updated dataset **without duplicate headers**
         new_data.to_csv(file_path, index=False)
+        remove_second_line(file_path)  # Ensure second line is removed
         print(f"✅ Updated dataset saved to {file_path}")
     else:
         print("⚠️ No new data to update.")
