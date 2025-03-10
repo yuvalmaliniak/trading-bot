@@ -10,13 +10,11 @@ logger = logging.getLogger(__name__)
 
 class UserModel(BaseModel):
     email: EmailStr
-    balance: float = 0.0
     api_key : SecretStr
     api_secret : SecretStr
     cash_at_risk: float = 0.0
     trade_history: list = Field(default_factory=list)
-    current_holdings: dict = Field(default_factory=dict)
-    profit: float = 0.0
+    symbol : str = "SPY"
 
 class Database:
     def __init__(self,db_connection_str):
@@ -94,8 +92,7 @@ class Database:
         try:
             for tweet in tweets_list:
                 # Calculate the actual datetime from 'hours ago'
-                hours_ago = int(tweet['published_date'].split()[0])
-                tweet_date = datetime.now() - timedelta(hours=hours_ago)
+                tweet_date = datetime.today().strftime('%Y-%m-%d')
 
                 # Prepare the document for insertion
                 tweet_document = {
@@ -103,6 +100,7 @@ class Database:
                     "date": tweet_date,
                     "link": tweet.get("link"),
                     "thumbnail": tweet.get("thumbnail"),
+                    "stock_symbol": tweet.get("stock_symbol"),
                 }
 
                 # Insert the document into the collection
@@ -118,10 +116,18 @@ class Database:
         :return: List of tweets documents.
         """
         try:
-            return list(self.tweets_collection.find())
+            result = self.tweets_collection.delete_many({"stock_symbol": {"$exists": False}})
+            tweets = list(self.tweets_collection.find())
+
+            # Convert ObjectId to string for JSON serialization
+            for tweet in tweets:
+                tweet["_id"] = str(tweet["_id"])  # Convert ObjectId to string
+
+            return tweets
         except Exception as e:
             logger.error(f"Error fetching tweets: {e}")
             return []
+
 
     def delete_tweets(self, tweet_id):
         """
@@ -136,3 +142,25 @@ class Database:
         except Exception as e:
             logger.error(f"Error deleting tweet: {e}")
             return False
+
+    def update_tweets(self, tweet_id, update_data):
+        """
+        Updates a specific tweet item by its ObjectId.
+
+        :param tweet_id: The ObjectId of the tweet item to update.
+        :param update_data: The new data to update.
+        :return: True if updated, False otherwise.
+        """
+        try:
+            result = self.tweets_collection.update_one(
+                {"_id": ObjectId(tweet_id)}, {"$set": update_data}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            logger.error(f"Error updating tweet: {e}")
+            return False
+
+    def delete_all_tweets(self):
+        """Deletes all tweets from the database."""
+        result = self.tweets_collection.delete_many({})
+        print(f"✅ Deleted {result.deleted_count} tweets.")

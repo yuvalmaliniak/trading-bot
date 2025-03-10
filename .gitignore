@@ -16,3 +16,8 @@ pyvenv.cfg
 
 # Ignore environment files for security
 .env
+
+#Ignore logs folder
+logs/
+
+requirements.txt

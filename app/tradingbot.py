@@ -12,30 +12,20 @@ from datetime import datetime
 from alpaca_trade_api import REST
 from timedelta import Timedelta
 from models.finbert_model import estimate_sentiment
-# from dotenv import load_dotenv
 import os
 import pandas as pd
 
-# load_dotenv()
-#
-# API_KEY = os.getenv("API_KEY")
-# API_SECRET = os.getenv("API_SECRET")
 BASE_URL = "https://paper-api.alpaca.markets"
-#
-# ALPACA_CREDS = {
-#     "API_KEY": API_KEY,
-#     "API_SECRET": API_SECRET,
-#     "PAPER": True
-# }
+
 # List of stock symbols to process
 stock_symbols = ["SPY", "AAPL"]
 # Dictionary to store actions for each symbol
 actions_dicts = {}
+iterations_dict = {}
 
 # load prediction csv for each symbol
 for symbol in stock_symbols:
     csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), f"../models/{symbol}_predictions.csv"))
-    
     if os.path.exists(csv_path):
         actions_df = pd.read_csv(csv_path)
         actions_df['Date'] = pd.to_datetime(actions_df['Date']).dt.strftime('%Y-%m-%d')
@@ -45,10 +35,20 @@ for symbol in stock_symbols:
         print(f"No predictions file found for {symbol}, skipping.")
         actions_dicts[symbol] = {}  
 
+
 class MLTrader(Strategy):
 
     def initialize(self):
-        self.symbol = self.get_parameters()["symbol"]
+        param_symbol = self.get_parameters()["symbol"]
+
+        # Ensure symbol is a string and not a set
+        if isinstance(param_symbol, set):
+            self.symbol = next(iter(param_symbol))  # Extract first element from set
+        else:
+            self.symbol = str(param_symbol)
+
+        print(f"symbol : {self.symbol}, type: {type(self.symbol)}")
+        print(f"symbol : {self.symbol}, type: {type(self.symbol)}")
         self.cash_at_risk = self.get_parameters()["cash_at_risk"]
         self.sleeptime = "24H" 
         self.last_trade = None
@@ -93,10 +93,21 @@ class MLTrader(Strategy):
         else:
             sentiment_score = -1
 
+        if not actions_dicts or len(actions_dicts) == 0:
+            weight_of_model = 0
+        else:
+            weight_of_model = 0.2
+
         # Weighted decision: 70% sentiment * probability, 30% PPO model
-        weighted_decision = (0.8 * float(sentiment_score) * float(probability)) + (
-                    0.2 * (1 if model_action == 1 else -1))
+        weighted_decision = ((1 - weight_of_model) * float(sentiment_score) * float(probability)) + (
+                    weight_of_model * (1 if model_action == 1 else -1))
         print(weighted_decision)
+
+        # Track all transactions in `iterations_dict`
+        if today_str not in iterations_dict:
+            iterations_dict[today_str] = []
+
+        transaction = 0
 
         if cash > last_price:
             if weighted_decision > 0.5:  # Buy decision
@@ -112,6 +123,7 @@ class MLTrader(Strategy):
                 )
                 self.submit_order(order)
                 self.last_trade = "buy"
+                transaction = 1
             elif weighted_decision < -0.5:  # Sell decision
                 if self.last_trade == "buy":
                     self.sell_all()
@@ -125,7 +137,8 @@ class MLTrader(Strategy):
                 )
                 self.submit_order(order)
                 self.last_trade = "sell"
-
+                transaction = -1
+        iterations_dict[today_str].append(transaction)
 
 # start_date = datetime(2024, 1, 1)
 # end_date = datetime(2025, 1, 1)

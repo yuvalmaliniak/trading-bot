@@ -10,29 +10,44 @@ from serpapi import GoogleSearch
 load_dotenv()
 SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY")
 
-def fetch_tweets_with_serpapi(twitter_account_owner, stock_symbol):
-    params = {
-        "q": twitter_account_owner + "twitter",
-        "engine": "google",  # Use Google engine
-        "hl": "en",          # Language: English
-        "gl": "us",          # Country: US
-        "api_key": SERPAPI_API_KEY
-    }
-
-    try:
-        search = GoogleSearch(params)
-        results = search.get_dict()
-        twitter_results = results.get("twitter_results", [])
-        tweets = twitter_results['tweets']
-        for tweet in tweets:
-            tweet['owner'] = twitter_account_owner
-            tweet['stock_symbol'] = stock_symbol
-        print(tweets)
-        return tweets
-    except Exception as e:
-        print(f"Error fetching tweets: {e}")
+def fetch_tweets_with_serpapi(stock_symbol):
+    all_tweets = []
+    if stock_symbol == "AAPL":
+        twitter_account_owners = ["Tim Cook"]
+    elif stock_symbol == "SPY":
+        twitter_account_owners = [
+            "CNBC", "Bloomberg", "Yahoo Finance", "TheStreet",
+            "MarketWatch", "WSJ Markets", "Stocktwits", "Jim Cramer"
+        ]
+    else:
         return []
+    for account in twitter_account_owners:
+        params = {
+            "q": account + "twitter",
+            "engine": "google",  # Use Google engine
+            "hl": "en",          # Language: English
+            "gl": "us",          # Country: US
+            "api_key": SERPAPI_API_KEY
+        }
 
+        try:
+            search = GoogleSearch(params)
+            results = search.get_dict()
+            twitter_results = results.get("twitter_results", [])
+            tweets = twitter_results['tweets']
+            for tweet in tweets:
+                # Remove all null fields
+                tweet.pop("thumbnail", None)
+                tweet['owner'] = account
+                tweet['stock_symbol'] = stock_symbol
+            print(tweets)
+            all_tweets.extend(tweets)
+        except Exception as e:
+            print(f"Error fetching tweets: {e}")
+            return []
+        return all_tweets
+if __name__ == "__main__":
+    pass
 
 #
 # def extract_media_from_tweet(url):

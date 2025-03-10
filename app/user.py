@@ -1,3 +1,5 @@
+from time import sleep
+
 from openai import api_key
 from alpaca_trade_api import REST 
 from db.database import Database
@@ -5,8 +7,31 @@ from lumibot.brokers import Alpaca
 from datetime import datetime
 from lumibot.backtesting import YahooDataBacktesting
 from app.tradingbot import MLTrader
+from alpaca_trade_api import REST
+from alpaca_trade_api.rest import APIError
+
+
 BASE_URL = "https://paper-api.alpaca.markets"
 
+
+def test_alpaca_creds(api_key: str, api_secret: str) -> bool:
+    """Check if the given Alpaca API key and secret are valid."""
+    try:
+        api = REST(api_key, api_secret, BASE_URL)
+        account = api.get_account()
+
+        if account and account.status in ["ACTIVE", "APPROVED"]:
+            print(f"✅ API authentication successful: Account ID {account.id}")
+            return True
+        else:
+            print("❌ API authentication failed: Account not active.")
+            return False
+    except APIError as e:
+        print(f"❌ API authentication failed: {e.status_code} - {e}")
+        return False
+    except Exception as e:
+        print(f"❌ Unexpected error: {str(e)}")
+        return False
 class User:
     def __init__(self, user_data, db,creation_date):
         try:
@@ -14,6 +39,9 @@ class User:
             api_data = db.get_user_api_keys(user_data["email"])
             self.api_key = api_data["api_key"]
             self.api_secret = api_data["api_secret"]
+
+
+            self.symbol = self.user_data["symbol"]
             print(f"api_key is: {self.api_key}")
             self.cash_at_risk = self.user_data["cash_at_risk"]  
             self.start_date = creation_date
@@ -24,14 +52,13 @@ class User:
             }
 
             self.trading_bot = MLTrader(
-                name='mlstrat',
+                name=f'mlstrat_{self.user_data["email"]}',
                 broker=Alpaca(self.ALPACA_CREDS),
-                parameters={"symbol": "SPY", "cash_at_risk": 0.7, "api_key": self.api_key, "api_secret": self.api_secret}   
+                parameters={"symbol": {self.symbol}, "cash_at_risk": 0.7, "api_key": self.api_key, "api_secret": self.api_secret}
             )
-            print(self.trading_bot.get_parameters())
 
         except Exception as e:
-            raise Exception(f"Error initializing user: {e}")
+            raise Exception(f"{e}")
 
     def start_trading(self, start_date, end_date):
         """Starts the trading bot for this user."""
@@ -40,7 +67,9 @@ class User:
                 YahooDataBacktesting,
                 start_date,
                 end_date,
-                parameters={"symbol": "SPY", "cash_at_risk": self.cash_at_risk, "api_key": self.api_key, "api_secret": self.api_secret},
+                parameters={"symbol": {str(self.symbol)}, "cash_at_risk": self.cash_at_risk, "api_key": self.api_key, "api_secret": self.api_secret},
+                benchmark_asset=str(self.symbol),
+                name=f"{self.user_data['email']}_backtest"
             )
             # self.trading_bot.backtest(
             #     YahooDataBacktesting,
