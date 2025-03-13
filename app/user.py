@@ -1,10 +1,4 @@
-from time import sleep
-
-from openai import api_key
-from alpaca_trade_api import REST 
-from db.database import Database
 from lumibot.brokers import Alpaca
-from datetime import datetime
 from lumibot.backtesting import YahooDataBacktesting
 from app.tradingbot import MLTrader
 from alpaca_trade_api import REST
@@ -14,7 +8,7 @@ from alpaca_trade_api.rest import APIError
 BASE_URL = "https://paper-api.alpaca.markets"
 
 
-def test_alpaca_creds(api_key: str, api_secret: str) -> bool:
+def validate_alpaca_creds(api_key: str, api_secret: str) -> bool:
     """Check if the given Alpaca API key and secret are valid."""
     try:
         api = REST(api_key, api_secret, BASE_URL)

@@ -20,4 +20,5 @@ pyvenv.cfg
 #Ignore logs folder
 logs/
 
-requirements.txt
+
+.DS_Store

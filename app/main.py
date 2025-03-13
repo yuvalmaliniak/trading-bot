@@ -3,25 +3,17 @@ from fastapi.responses import FileResponse
 from db.database import Database
 from app.twitter_classification import fetch_tweets_with_serpapi
 from datetime import datetime, timedelta
-from app.user import User, test_alpaca_creds
+from app.user import User, validate_alpaca_creds
 import time, os
 from app.reporting import get_latest_tearsheet
 from models.analyze_tweets import analyze_tweets
+from models.graph_data_analayze import update_data
+from time import sleep
+from models.test_model import test_model
 app = FastAPI()
 db_connection_str = "mongodb://localhost:27017"
 db = Database(db_connection_str)
 
-
-#twitter_results = fetch_tweets_with_serpapi("Elon Musk", "TSLA")
-# if not db.get_all_tweets():
-#     print("No news found")
-# else:
-#     #db.insert_tweets(twitter_results)
-
-
-
-
-# -------------------- User Endpoints --------------------
 
 @app.post("/trading/user")
 async def create_account(user_data: dict):
@@ -33,7 +25,7 @@ async def create_account(user_data: dict):
         if not api_key or not api_secret:
             raise HTTPException(status_code=400, detail="Missing API key or secret.")
 
-        if not test_alpaca_creds(api_key, api_secret):
+        if not validate_alpaca_creds(api_key, api_secret):
             raise HTTPException(status_code=403, detail="Invalid Alpaca API credentials.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error validating API credentials: {str(e)}")
@@ -66,6 +58,10 @@ async def update_settings(id: str, data: dict):
         if not isinstance(data["cash_at_risk"], (int, float)) or not (0 <= data["cash_at_risk"] <= 1):
             raise HTTPException(status_code=400, detail="cash_at_risk must be a number between 0 and 1.")
         updates["cash_at_risk"] = data["cash_at_risk"]
+    if "days_to_run" in data:
+        if not isinstance(data["days_to_run"], int) or data["days_to_run"] <= 0:
+            raise HTTPException(status_code=400, detail="days_to_run must be a positive integer.")
+        updates["days_to_run"] = data["days_to_run"]
 
     if not updates:
         raise HTTPException(status_code=400, detail="No valid fields to update.")
@@ -87,7 +83,7 @@ async def start_trading(id: str, request: Request):
     try:
         user = User(user_data, db, datetime.today())
         time.sleep(5)
-        user.start_trading(datetime.today() - timedelta(days=45), datetime.today())
+        user.start_trading(datetime.today() - timedelta(days=user_data["days_to_run"]), datetime.today())
         return {
             "message": f"Trading runs successfully. Visit {request.base_url}trading/report/{user_data['email']} in your browser to view the full report",
             "user_id": id
@@ -97,6 +93,14 @@ async def start_trading(id: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error starting trading: {str(e)}")
 
+
+@app.get("/trading/user/{id}")
+async def get_user(id: str):
+    """Retrieve user data by email."""
+    user = db.get_user(id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 @app.get("/trading/report/{email}")
 async def get_user_report(email: str):
@@ -109,31 +113,6 @@ async def get_user_report(email: str):
     return FileResponse(latest_report, media_type="text/html", filename=os.path.basename(latest_report))
 
 
-@app.get("/trading/transactions/summary/{email}")
-async def get_transaction_summary(email: str):
-    """Fetch transaction summary for a user."""
-    summary = analyze_transactions(db, email)
-    return summary
-
-
-@app.get("/trading/report/{id}")
-async def generate_report(id: str):
-    """Generate and fetch user trading reports."""
-    user = db.get_user(id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    report = {
-        "email": user["email"],
-        "balance": user["balance"],
-        "cash_at_risk": user["cash_at_risk"],
-        "trade_history": user["trade_history"],
-        "current_holdings": user["current_holdings"],
-        "profit": user["profit"],
-    }
-    return {"report": report}
-
-
 @app.delete("/trading/account/{id}")
 async def delete_account(id: str):
     """Delete an account."""
@@ -142,7 +121,19 @@ async def delete_account(id: str):
         return {"message": "User deleted successfully"}
     raise HTTPException(status_code=404, detail="User not found")
 
-
+@app.post("/trading/model_analyze")
+async def analyze_model():
+    # Get the current directory before changing, and go to models
+    original_dir = os.getcwd()
+    os.chdir(os.path.join(original_dir, "models"))
+    """Runs daily so the model will predict today's results"""
+    stock_symbols = ["SPY", "AAPL"]
+    for symbol in stock_symbols:
+        update_data(symbol)
+    sleep(30)
+    test = test_model()
+    os.chdir(original_dir)
+    return {"message": "Model computed successfully!"}
 # -------------------- Tweets Endpoints --------------------
 
 @app.get("/tweets/{StockSymbol}")
@@ -164,12 +155,9 @@ async def get_latest_tweets(StockSymbol: str):
             updated_tweets.append(tweet)
 
         db.insert_tweets(updated_tweets)
-    # elif StockSymbol == "SPY":
-    #     return {"message": "SPY stock symbol tweets not needed, use AAPL instead."}
     else:
         tweets = db.get_all_tweets()
     if not tweets:
         raise HTTPException(status_code=404, detail="No tweets found")
-
 
     return {"tweets": tweets}

@@ -15,3 +15,6 @@ def get_latest_tearsheet(email: str):
     if files:
         return files[0]
     return None
+def analyze_transactions(db, email):
+    """Mock function to return sample transactions."""
+    return {"2025-03-10": [1, -1, 1]}

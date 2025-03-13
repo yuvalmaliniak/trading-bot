@@ -13,8 +13,8 @@ class UserModel(BaseModel):
     api_key : SecretStr
     api_secret : SecretStr
     cash_at_risk: float = 0.0
-    trade_history: list = Field(default_factory=list)
     symbol : str = "SPY"
+    days_to_run: int = 365
 
 class Database:
     def __init__(self,db_connection_str):
@@ -27,7 +27,7 @@ class Database:
 
     def insert_user(self, user_data):
         try:
-            validated_user = UserModel(**user_data).dict()
+            validated_user = UserModel(**user_data).model_dump()
             validated_user["api_key"] = validated_user["api_key"].get_secret_value()
             validated_user["api_secret"] = validated_user["api_secret"].get_secret_value()
             result = self.users_collection.insert_one(validated_user)

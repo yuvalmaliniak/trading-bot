@@ -7,7 +7,7 @@ import os
 
 # Function to fetch stock data
 def fetch_stock_data(symbol: str, start_date: str, end_date: str):
-    data = yf.download(symbol, start=start_date, end=end_date)
+    data = yf.download(symbol, start=start_date, end=end_date, auto_adjust=True, progress=False)
     data = data[['Open', 'High', 'Low', 'Close', 'Volume']]
     data.reset_index(inplace=True)
     return data
@@ -74,6 +74,7 @@ def update_data(symbol):
 
     start_date = datetime(1960, 1, 1).date()  # Default start date
     end_date = datetime.today().strftime("%Y-%m-%d")
+    print(f"🔄 Updating {symbol} data from {start_date} to {end_date}...")
 
     new_data = fetch_stock_data(symbol, start_date, end_date)
 
@@ -85,9 +86,8 @@ def update_data(symbol):
         new_data = calculate_rsi(new_data, period=14)
         new_data = calculate_bollinger_bands(new_data, window=20)
         new_data = normalize_data(new_data)
-
         # Save updated dataset **without duplicate headers**
-        new_data.to_csv(file_path, index=False)
+        new_data.to_csv(file_path, index=False, mode='w')
         remove_second_line(file_path)  # Ensure second line is removed
         print(f"✅ Updated dataset saved to {file_path}")
     else:
