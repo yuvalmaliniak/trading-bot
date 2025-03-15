@@ -1,0 +1,22 @@
+# Ignore virtual environments
+.venv
+myenv
+
+# Ignore Git repository files
+.git
+.gitignore
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore logs, temp files, and unnecessary artifacts
+logs/
+*.log
+*.tmp
+*.swp
+
+# Ignore CSV files and other large datasets if not needed
+*.csv

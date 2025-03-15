@@ -11,7 +11,7 @@ from models.graph_data_analayze import update_data
 from time import sleep
 from models.test_model import test_model
 app = FastAPI()
-db_connection_str = "mongodb://localhost:27017"
+db_connection_str = "mongodb://mongo:27017/"
 db = Database(db_connection_str)
 
 
@@ -139,24 +139,38 @@ async def analyze_model():
 @app.get("/tweets/{StockSymbol}")
 async def get_latest_tweets(StockSymbol: str):
     all_tweets = db.get_all_tweets()
-    if StockSymbol == "AAPL" or StockSymbol == "SPY":
-        relevant_tweets = [tweet for tweet in all_tweets if tweet["stock_symbol"] == StockSymbol]
+
+    if StockSymbol in ["AAPL", "SPY"]:
+        relevant_tweets = [tweet for tweet in all_tweets if
+                           isinstance(tweet, dict) and tweet.get("stock_symbol") == StockSymbol]
+        print(f"Found {len(relevant_tweets)} tweets for {StockSymbol}")
+        print(f"Latest tweet date: {relevant_tweets[0].get('date', '') if relevant_tweets else 'N/A'}")
+
         for tweet in relevant_tweets:
-            tweet_date = datetime.strptime(tweet["date"], "%Y-%m-%d")
+            tweet_date = datetime.strptime(tweet.get("date", ""), "%Y-%m-%d")
             if tweet_date.date() == datetime.today().date():
                 print(f"Tweets fetched today for {StockSymbol}, no need to fetch new.")
                 return {"tweets": relevant_tweets}
 
+        # Ensure fetch_tweets_with_serpapi returns a list of dictionaries
         tweets = fetch_tweets_with_serpapi(StockSymbol)
+        print("tweets got:", tweets, "type:", type(tweets))
+        # if not isinstance(tweets, list):
+        #     raise HTTPException(status_code=500, detail="Error fetching tweets: Expected a list")
+
         updated_tweets = []
         for tweet in tweets:
-            tweet["stock_symbol"] = StockSymbol
-            tweet["LLM_classification"] = analyze_tweets(tweet)
-            updated_tweets.append(tweet)
+            if isinstance(tweet, dict):  # Ensure tweet is a dictionary
+                tweet["stock_symbol"] = StockSymbol
+                tweet["LLM_classification"] = analyze_tweets(tweet)
+                updated_tweets.append(tweet)
+            else:
+                print("⚠️ Skipping non-dictionary tweet:", tweet)
 
         db.insert_tweets(updated_tweets)
     else:
         tweets = db.get_all_tweets()
+
     if not tweets:
         raise HTTPException(status_code=404, detail="No tweets found")
 
