@@ -82,8 +82,8 @@ jobs:
       - name: Deploy to Azure Container App
         run: |
           az containerapp update \
-            --name trading-bot-app \
-            --resource-group fastapi_app_resource_group \
+            --name trading-bot \
+            --resource-group fastapi-app-rg \
             --image ${{ secrets.DOCKER_USERNAME }}/trading-bot:${{ env.IMAGE_TAG }} \
             --set-env-vars \
               API_KEY=${{ secrets.API_KEY }} \
