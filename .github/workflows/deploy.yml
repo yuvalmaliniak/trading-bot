@@ -77,11 +77,6 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/trading-bot:${{ env.IMAGE_TAG }}
           docker push ${{ secrets.DOCKER_USERNAME }}/trading-bot:latest
           
-      - name: Build and Push MongoDB Image
-        run: |
-          docker pull mongo
-          docker tag mongo ${{ secrets.DOCKER_USERNAME }}/mongo
-          docker push ${{ secrets.DOCKER_USERNAME }}/mongo
 
       # Log in to Azure using the Service Principal
       - name: Log in to Azure
