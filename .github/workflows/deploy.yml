@@ -84,7 +84,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Deploy the Container App in Azure
+            # Deploy the Container App in Azure
       - name: Deploy to Azure Container App
         run: |
           az containerapp update \
@@ -93,7 +93,7 @@ jobs:
             --image ${{ secrets.DOCKER_USERNAME }}/trading-bot:${{ env.IMAGE_TAG }} \
             --set-env-vars \
               API_KEY=${{ secrets.API_KEY }} \
-              ALPACA_API_KEY=${{ secrets.ALPACA_API_KEY }} \
-              GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \ 
+              ALPACA_API_KEY=${{ secrets.ALPACA_BROKER_API_KEY }} \
+              GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
               SERPAPI_API_KEY=${{ secrets.SERPAPI_API_KEY }} \
-              ALPACA_API_SECRET=${{ secrets.ALPACA_API_SECRET }}
+              ALPACA_API_SECRET=${{ secrets.ALPACA_BROKER_API_SECRET }}
