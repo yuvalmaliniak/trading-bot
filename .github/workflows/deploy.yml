@@ -84,7 +84,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-            # Deploy the Container App in Azure
+            # Deploy the Container App in Azure.
       - name: Deploy to Azure Container App
         run: |
           az containerapp update \
