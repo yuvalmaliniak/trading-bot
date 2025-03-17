@@ -9,6 +9,17 @@ jobs:
   test-and-build:
     runs-on: ubuntu-latest
 
+    services:
+      mongo:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "echo 'db.runCommand({ping:1})' | mongosh localhost:27017/test --quiet"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       # Checkout the code
       - name: Checkout code
@@ -26,7 +37,7 @@ jobs:
           python -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install --no-cache-dir -r requirements.txt 
 
       # Run unit tests before proceeding
       - name: Run unit tests

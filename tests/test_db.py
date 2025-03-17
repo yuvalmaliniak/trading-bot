@@ -8,7 +8,7 @@ from bson.objectid import ObjectId
 @pytest.fixture
 def mock_db():
     """Creates an in-memory mock database."""
-    db_instance = Database("mongodb://localhost:27017")
+    db_instance = Database("mongodb://localhost:27017/test_db")
     db_instance.client = mongomock.MongoClient()
     db_instance.db = db_instance.client["trading_app"]
     db_instance.users_collection = db_instance.db["users"]
