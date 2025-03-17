@@ -94,7 +94,6 @@ jobs:
             --set-env-vars \
               API_KEY=${{ secrets.API_KEY }} \
               ALPACA_API_KEY=${{ secrets.ALPACA_API_KEY }} \
-              GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
-              ALPACA_API_KEY=${{ secrets.ALPACA_API_KEY }} \
+              GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \ 
               SERPAPI_API_KEY=${{ secrets.SERPAPI_API_KEY }} \
               ALPACA_API_SECRET=${{ secrets.ALPACA_API_SECRET }}
