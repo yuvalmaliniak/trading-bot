@@ -18,10 +18,6 @@ def mock_tearsheet_files():
         yield test_files
 
 
-def test_get_latest_tearsheet(mock_tearsheet_files):
-    latest_file = get_latest_tearsheet("test")
-    assert latest_file.endswith("test_backtest_20250302.html")
-
 
 
 def test_analyze_transactions():

@@ -1,0 +1,94 @@
+name: Build and Deploy to Azure Container App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Run unit tests before proceeding
+      - name: Run unit tests
+        run: |
+          source venv/bin/activate
+          pytest tests/ --disable-warnings --maxfail=5
+
+  build-and-deploy:
+    needs: test-and-build  # Ensures this job runs only if the tests pass
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Log in to Docker Hub
+      - name: Log in to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      # Define Image Tag
+      - name: Set Image Tag
+        id: image_tag
+        run: echo "IMAGE_TAG=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
+
+      # Build the Docker Image
+      - name: Build Docker Image
+        run: |
+          docker buildx build --no-cache --platform=linux/amd64 \
+            -t ${{ secrets.DOCKER_USERNAME }}/trading-bot:${{ env.IMAGE_TAG }} \
+            -t ${{ secrets.DOCKER_USERNAME }}/trading-bot:latest .
+
+      # Push the Docker Image to Docker Hub
+      - name: Push Docker Image
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/trading-bot:${{ env.IMAGE_TAG }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/trading-bot:latest
+          
+      - name: Build and Push MongoDB Image
+        run: |
+          docker pull mongo
+          docker tag mongo ${{ secrets.DOCKER_USERNAME }}/mongo
+          docker push ${{ secrets.DOCKER_USERNAME }}/mongo
+
+      # Log in to Azure using the Service Principal
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Deploy the Container App in Azure
+      - name: Deploy to Azure Container App
+        run: |
+          az containerapp update \
+            --name trading-bot-app \
+            --resource-group fastapi_app_resource_group \
+            --image ${{ secrets.DOCKER_USERNAME }}/trading-bot:${{ env.IMAGE_TAG }} \
+            --set-env-vars \
+              API_KEY=${{ secrets.API_KEY }} \
+              ALPACA_API_KEY=${{ secrets.ALPACA_API_KEY }} \
+              GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
+              ALPACA_API_KEY=${{ secrets.ALPACA_API_KEY }} \
+              SERPAPI_API_KEY=${{ secrets.SERPAPI_API_KEY }} \
+              ALPACA_API_SECRET=${{ secrets.ALPACA_API_SECRET }}
