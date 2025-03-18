@@ -85,7 +85,7 @@ async def start_trading(id: str, request: Request):
         time.sleep(5)
         user.start_trading(datetime.today() - timedelta(days=user_data["days_to_run"]), datetime.today())
         return {
-            "message": f"Trading runs successfully. Visit {request.base_url}trading/report/{user_data['email']} in your browser to view the full report",
+            "message": f"Trading runs successfully. Visit {request.base_url}/trading/report/{user_data['email']} in your browser to view the full report",
             "user_id": id
         }
 
