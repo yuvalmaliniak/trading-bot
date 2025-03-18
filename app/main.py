@@ -11,7 +11,7 @@ from models.graph_data_analayze import update_data
 from time import sleep
 from models.test_model import test_model
 app = FastAPI()
-db_connection_str = "mongodb://mongo:27017/"
+db_connection_str = "mongodb://mongo-db:27017/"
 db = Database(db_connection_str)
 
 
