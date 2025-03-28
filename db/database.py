@@ -24,6 +24,8 @@ class Database:
         self.users_collection = self.db["users"]
         self.users_collection.create_index("email", unique=True)
         self.tweets_collection = self.db["tweets"]
+        self.running_bots_collection = self.db["running_bots"]
+        self.running_bots_collection.create_index("email", unique=True)
 
     def insert_user(self, user_data):
         try:
@@ -164,3 +166,55 @@ class Database:
         """Deletes all tweets from the database."""
         result = self.tweets_collection.delete_many({})
         print(f"✅ Deleted {result.deleted_count} tweets.")
+
+    def upsert_bot_process(self, email, pid, symbol):
+        """Insert or update a running bot process for a user."""
+        try:
+            self.running_bots_collection.update_one(
+                {"email": email},
+                {
+                    "$set": {
+                        "pid": pid,
+                        "symbol": symbol,
+                        "status": "running",
+                        "start_time": datetime.utcnow()
+                    }
+                },
+                upsert=True
+            )
+            logger.info(f"✅ Process {pid} saved for {email}")
+        except Exception as e:
+            logger.error(f"Error saving bot process: {e}")
+
+    def get_bot_process(self, email):
+        """Get the process info for a specific user."""
+        try:
+            return self.running_bots_collection.find_one({"email": email})
+        except Exception as e:
+            logger.error(f"Error retrieving bot process: {e}")
+            return None
+
+    def stop_bot_process(self, email):
+        """Terminate a running bot process for the user."""
+        try:
+            bot = self.running_bots_collection.find_one({"email": email})
+            if bot and "pid" in bot:
+                import os
+                os.kill(bot["pid"], 9)  # Force kill
+                self.running_bots_collection.delete_one({"email": email})
+                logger.info(f"🛑 Process {bot['pid']} killed for {email}")
+                return True
+            else:
+                logger.warning(f"No process found to stop for {email}")
+                return False
+        except Exception as e:
+            logger.error(f"Error stopping bot process: {e}")
+            return False
+
+    def get_all_running_bots(self):
+        """Get all running bot processes."""
+        try:
+            return list(self.running_bots_collection.find())
+        except Exception as e:
+            logger.error(f"Error fetching running bots: {e}")
+            return []

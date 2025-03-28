@@ -1,11 +1,42 @@
 from lumibot.brokers import Alpaca
+from lumibot.traders import Trader
 from lumibot.backtesting import YahooDataBacktesting
 from app.tradingbot import MLTrader
 from alpaca_trade_api import REST
 from alpaca_trade_api.rest import APIError
-
+from multiprocessing import Process
+import os
+import logging
 
 BASE_URL = "https://paper-api.alpaca.markets"
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def run_bot(user_data, api_key, api_secret, cash_at_risk, symbol):
+    alpaca_creds = {
+        "API_KEY": api_key,
+        "API_SECRET": api_secret,
+        "PAPER": True
+    }
+
+    try:
+        trading_bot = MLTrader(
+            name=f'mlstrat_{user_data["email"]}',
+            broker=Alpaca(alpaca_creds),
+            parameters={
+                "symbol": {symbol},
+                "cash_at_risk": cash_at_risk,
+                "api_key": api_key,
+                "api_secret": api_secret
+            }
+        )
+
+        trader = Trader()
+        trader.add_strategy(trading_bot)
+        trader.run_all()
+    except Exception as e:
+        logger.error(f"Bot failed to run for {user_data['email']}: {e}")
 
 
 def validate_alpaca_creds(api_key: str, api_secret: str) -> bool:
@@ -65,13 +96,29 @@ class User:
                 benchmark_asset=str(self.symbol),
                 name=f"{self.user_data['email']}_backtest"
             )
-            # self.trading_bot.backtest(
-            #     YahooDataBacktesting,
-            #     start_date,
-            #     end_date,
-            #     parameters={"symbol": "SPY", "cash_at_risk": self.cash_at_risk}
-            # )
 
             print(f"Trading started for {self.user_data['email']}")
         except Exception as e:
             print(f"Error starting trading bot for {self.user_data['email']}: {e}")
+
+    def live_trading(self,db):
+        # Stop old process (if exists)
+        existing_bot = db.get_bot_process(self.user_data["email"])
+        if existing_bot and "pid" in existing_bot:
+            try:
+                os.kill(existing_bot["pid"], 9)
+                print(f"Old process {existing_bot['pid']} killed for {self.user_data['email']}")
+            except ProcessLookupError:
+                print("Process already dead")
+            db.stop_bot_process(self.user_data["email"])
+
+        # Start new process
+        process = Process(
+            target=run_bot,
+            args=(self.user_data, self.api_key, self.api_secret, self.cash_at_risk, self.symbol)
+        )
+        process.start()
+
+        # Save process info
+        db.upsert_bot_process(self.user_data["email"], process.pid, self.symbol)
+        print(f"Trading started in background (process) for {self.user_data['email']}")

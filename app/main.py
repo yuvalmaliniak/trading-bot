@@ -11,7 +11,7 @@ from models.graph_data_analayze import update_data
 from time import sleep
 from models.test_model import test_model
 app = FastAPI()
-db_connection_str = "mongodb://mongo-db:27017/"
+db_connection_str = "mongodb://localhost:27017/"
 db = Database(db_connection_str)
 
 
@@ -155,8 +155,7 @@ async def get_latest_tweets(StockSymbol: str):
         # Ensure fetch_tweets_with_serpapi returns a list of dictionaries
         tweets = fetch_tweets_with_serpapi(StockSymbol)
         print("tweets got:", tweets, "type:", type(tweets))
-        # if not isinstance(tweets, list):
-        #     raise HTTPException(status_code=500, detail="Error fetching tweets: Expected a list")
+
 
         updated_tweets = []
         for tweet in tweets:
@@ -175,3 +174,23 @@ async def get_latest_tweets(StockSymbol: str):
         raise HTTPException(status_code=404, detail="No tweets found")
 
     return {"tweets": tweets}
+
+@app.post("/trading/live_trade/{id}")
+async def live_trading(id: str, request: Request):
+    """Start trading for an existing user."""
+
+    user_data = db.get_user(id)
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    try:
+        user = User(user_data, db, datetime.today())
+        time.sleep(5)
+        user.live_trading(db)
+        return {
+            "message": f"Trading runs successfully, using the strategy provided. Visit your Alpaca account to check the trades.",
+            "user_id": id
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error starting trading: {str(e)}")
