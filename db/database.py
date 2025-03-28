@@ -165,7 +165,7 @@ class Database:
     def delete_all_tweets(self):
         """Deletes all tweets from the database."""
         result = self.tweets_collection.delete_many({})
-        print(f"✅ Deleted {result.deleted_count} tweets.")
+        logger.info(f"Deleted {result.deleted_count} tweets.")
 
     def upsert_bot_process(self, email, pid, symbol):
         """Insert or update a running bot process for a user."""
@@ -182,7 +182,7 @@ class Database:
                 },
                 upsert=True
             )
-            logger.info(f"✅ Process {pid} saved for {email}")
+            logger.info(f"Process {pid} saved for {email}")
         except Exception as e:
             logger.error(f"Error saving bot process: {e}")
 
@@ -202,7 +202,7 @@ class Database:
                 import os
                 os.kill(bot["pid"], 9)  # Force kill
                 self.running_bots_collection.delete_one({"email": email})
-                logger.info(f"🛑 Process {bot['pid']} killed for {email}")
+                logger.info(f"Process {bot['pid']} killed for {email}")
                 return True
             else:
                 logger.warning(f"No process found to stop for {email}")
