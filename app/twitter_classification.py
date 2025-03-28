@@ -2,6 +2,10 @@ from dotenv import load_dotenv
 import os
 from serpapi import GoogleSearch
 from datetime import datetime
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 # Load environment variables
 load_dotenv()
@@ -34,19 +38,19 @@ def fetch_tweets_with_serpapi(stock_symbol):
             search = GoogleSearch(params)
             results = search.get_dict()
 
-            # Debugging: Print full response structure
-            print("🔍 Full SerpAPI Response:", results)
+            # Debugging: logger.info full response structure
+            logger.info(f"Full SerpAPI Response: {results}")
 
             organic_results = results.get("organic_results", [])
             twitter_results = []
-            print("🔍 Organic Results:", organic_results)
+            logger.info(f"Organic Results: {organic_results}")
             for result in organic_results:
                 if "x" in result.get("source", "").lower() or "twitter" in result.get("source", "").lower() or "twitter.com" in result.get("link", "").lower():
-                    print("🔍 Found Twitter Results:", result)
+                    logger.info(f"Found Twitter Results: {result}")
                     twitter_results.append(result)
             # Ensure 'twitter_results' exists and is a dictionary
             if not twitter_results:
-                print(f"⚠️ No 'twitter_results' found for {account}")
+                logger.info(f"No 'twitter_results' found for {account}")
                 continue  # Skip to the next account
 
 
@@ -60,14 +64,14 @@ def fetch_tweets_with_serpapi(stock_symbol):
                     new_tweet["link"] = tweet.get("link", "⚠️ No link available")
                     new_tweet["date"] = tweet.get("published_date", f"{datetime.today().strftime('%Y-%m-%d')}")
                     all_tweets.append(new_tweet)
-            print("✅ Extracted Tweets:", all_tweets)
+            logger.info(f"Extracted Tweets: {all_tweets}")
 
         except Exception as e:
-            print(f"❌ Error fetching tweets: {e}")
+            logger.info(f"Error fetching tweets: {e}")
             return []
 
     return all_tweets
 
 if __name__ == "__main__":
     test_tweets = fetch_tweets_with_serpapi("AAPL")
-    print("📢 Final Extracted Tweets:", test_tweets)
+    logger.info(f"Final Extracted Tweets: {test_tweets}")

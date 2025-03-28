@@ -7,6 +7,9 @@ from alpaca_trade_api.rest import APIError
 from multiprocessing import Process
 import os
 import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 BASE_URL = "https://paper-api.alpaca.markets"
 
@@ -46,16 +49,16 @@ def validate_alpaca_creds(api_key: str, api_secret: str) -> bool:
         account = api.get_account()
 
         if account and account.status in ["ACTIVE", "APPROVED"]:
-            print(f"✅ API authentication successful: Account ID {account.id}")
+            logger.info(f"API authentication successful: Account ID {account.id}")
             return True
         else:
-            print("❌ API authentication failed: Account not active.")
+            logger.info(f"API authentication failed: Account not active.")
             return False
     except APIError as e:
-        print(f"❌ API authentication failed: {e.status_code} - {e}")
+        logger.info(f"API authentication failed: {e.status_code} - {e}")
         return False
     except Exception as e:
-        print(f"❌ Unexpected error: {str(e)}")
+        logger.info(f"Unexpected error: {str(e)}")
         return False
 class User:
     def __init__(self, user_data, db,creation_date):
@@ -67,7 +70,7 @@ class User:
 
 
             self.symbol = self.user_data["symbol"]
-            print(f"api_key is: {self.api_key}")
+            logger.info(f"api_key is: {self.api_key}")
             self.cash_at_risk = self.user_data["cash_at_risk"]  
             self.start_date = creation_date
             self.ALPACA_CREDS = {
@@ -97,9 +100,9 @@ class User:
                 name=f"{self.user_data['email']}_backtest"
             )
 
-            print(f"Trading started for {self.user_data['email']}")
+            logger.info(f"Trading started for {self.user_data['email']}")
         except Exception as e:
-            print(f"Error starting trading bot for {self.user_data['email']}: {e}")
+            logger.info(f"Error starting trading bot for {self.user_data['email']}: {e}")
 
     def live_trading(self,db):
         # Stop old process (if exists)
@@ -107,9 +110,9 @@ class User:
         if existing_bot and "pid" in existing_bot:
             try:
                 os.kill(existing_bot["pid"], 9)
-                print(f"Old process {existing_bot['pid']} killed for {self.user_data['email']}")
+                logger.info(f"Old process {existing_bot['pid']} killed for {self.user_data['email']}")
             except ProcessLookupError:
-                print("Process already dead")
+                logger.info("Process already dead")
             db.stop_bot_process(self.user_data["email"])
 
         # Start new process
@@ -121,4 +124,4 @@ class User:
 
         # Save process info
         db.upsert_bot_process(self.user_data["email"], process.pid, self.symbol)
-        print(f"Trading started in background (process) for {self.user_data['email']}")
+        logger.info(f"Trading started in background (process) for {self.user_data['email']}")

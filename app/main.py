@@ -10,6 +10,10 @@ from models.analyze_tweets import analyze_tweets
 from models.graph_data_analayze import update_data
 from time import sleep
 from models.test_model import test_model
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 db_connection_str = "mongodb://localhost:27017/"
 db = Database(db_connection_str)
@@ -30,7 +34,7 @@ async def create_account(user_data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error validating API credentials: {str(e)}")
 
-    # ✅ Insert user into DB
+    # Insert user into DB
     result = db.insert_user(user_data)
     if isinstance(result, dict) and "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -143,18 +147,18 @@ async def get_latest_tweets(StockSymbol: str):
     if StockSymbol in ["AAPL", "SPY"]:
         relevant_tweets = [tweet for tweet in all_tweets if
                            isinstance(tweet, dict) and tweet.get("stock_symbol") == StockSymbol]
-        print(f"Found {len(relevant_tweets)} tweets for {StockSymbol}")
-        print(f"Latest tweet date: {relevant_tweets[0].get('date', '') if relevant_tweets else 'N/A'}")
+        logger.info(f"Found {len(relevant_tweets)} tweets for {StockSymbol}")
+        logger.info(f"Latest tweet date: {relevant_tweets[0].get('date', '') if relevant_tweets else 'N/A'}")
 
         for tweet in relevant_tweets:
             tweet_date = datetime.strptime(tweet.get("date", ""), "%Y-%m-%d")
             if tweet_date.date() == datetime.today().date():
-                print(f"Tweets fetched today for {StockSymbol}, no need to fetch new.")
+                logger.info(f"Tweets fetched today for {StockSymbol}, no need to fetch new.")
                 return {"tweets": relevant_tweets}
 
         # Ensure fetch_tweets_with_serpapi returns a list of dictionaries
         tweets = fetch_tweets_with_serpapi(StockSymbol)
-        print("tweets got:", tweets, "type:", type(tweets))
+        logger.info(f"tweets got: {tweets}, type: {type(tweets)}")
 
 
         updated_tweets = []
@@ -164,7 +168,7 @@ async def get_latest_tweets(StockSymbol: str):
                 tweet["LLM_classification"] = analyze_tweets(tweet)
                 updated_tweets.append(tweet)
             else:
-                print("⚠️ Skipping non-dictionary tweet:", tweet)
+                logger.info(f"Skipping non-dictionary tweet:, {tweet}")
 
         db.insert_tweets(updated_tweets)
     else:

@@ -4,16 +4,14 @@ import os
 # Add the parent directory to the system path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lumibot.brokers import Alpaca
-from lumibot.backtesting import YahooDataBacktesting
 from lumibot.strategies.strategy import Strategy
-from lumibot.traders import Trader
-from datetime import datetime
 from alpaca_trade_api import REST
 from timedelta import Timedelta
 from models.finbert_model import estimate_sentiment
-import os
 import pandas as pd
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 BASE_URL = "https://paper-api.alpaca.markets"
 
@@ -32,7 +30,7 @@ for symbol in stock_symbols:
         actions_df['Action'] = actions_df['Action'].astype(int)
         actions_dicts[symbol] = dict(zip(actions_df['Date'], actions_df['Action']))
     else:
-        print(f"No predictions file found for {symbol}, skipping.")
+        logger.info(f"No predictions file found for {symbol}, skipping.")
         actions_dicts[symbol] = {}  
 
 
@@ -47,8 +45,8 @@ class MLTrader(Strategy):
         else:
             self.symbol = str(param_symbol)
 
-        print(f"symbol : {self.symbol}, type: {type(self.symbol)}")
-        print(f"symbol : {self.symbol}, type: {type(self.symbol)}")
+        logger.info(f"symbol : {self.symbol}, type: {type(self.symbol)}")
+        logger.info(f"symbol : {self.symbol}, type: {type(self.symbol)}")
         self.cash_at_risk = self.get_parameters()["cash_at_risk"]
         self.sleeptime = "24H" 
         self.last_trade = None
@@ -82,8 +80,6 @@ class MLTrader(Strategy):
         # Get today's action from the PPO model
         today_str = self.get_datetime().strftime('%Y-%m-%d')
         model_action = actions_dicts.get(self.symbol, {}).get(today_str, 0)  # 1 = buy, 0 = sell
-        print("date is:", today_str)
-        print("result:", model_action)
 
         # Convert sentiment into numerical representation
         if sentiment == "neutral":
@@ -97,11 +93,10 @@ class MLTrader(Strategy):
             weight_of_model = 0
         else:
             weight_of_model = 0.2
-
-        # Weighted decision: 70% sentiment * probability, 30% PPO model
+            
         weighted_decision = ((1 - weight_of_model) * float(sentiment_score) * float(probability)) + (
                     weight_of_model * (1 if model_action == 1 else -1))
-        print(weighted_decision)
+        logger.info(weighted_decision)
 
         # Track all transactions in `iterations_dict`
         if today_str not in iterations_dict:
