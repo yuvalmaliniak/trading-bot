@@ -5,6 +5,9 @@ import pandas as pd
 import numpy as np
 import os
 from datetime import datetime
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def test_model():
 
@@ -16,12 +19,12 @@ def test_model():
 
     # Process each stock symbol
     for symbol in stock_symbols:
-        print(f"🔄 Processing {symbol}...")
+        logger.info(f"Processing {symbol}...")
 
         # Load the dataset
         csv_path = os.path.join(os.path.dirname(__file__), f"{symbol}_processed_data.csv")
         if not os.path.exists(csv_path):
-            print(f"⚠️ Skipping {symbol}, data file not found: {csv_path}")
+            logger.info(f"Skipping {symbol}, data file not found: {csv_path}")
             continue
 
         df = pd.read_csv(csv_path)
@@ -31,7 +34,7 @@ def test_model():
         # Load the trained model
         model_path = os.path.join(os.path.dirname(__file__), f"PPO_trading_model_{symbol}")
         if not os.path.exists(model_path + ".zip"):  # Ensure the model file exists
-            print(f"⚠️ Skipping {symbol}, model file not found: {model_path}.zip")
+            logger.info(f"Skipping {symbol}, model file not found: {model_path}.zip")
             continue
 
         model = PPO.load(model_path, custom_objects={"clip_range": 0.2, "lr_schedule": lambda _: 0.0003})
@@ -70,8 +73,8 @@ def test_model():
         output_file = f"{symbol}_predictions.csv"
         df_actions.to_csv(output_file, index=False)
 
-        print(f"✅ Predictions for {symbol} saved to {output_file}")
+        logger.info(f"Predictions for {symbol} saved to {output_file}")
 
-    print("🎉 Done processing all symbols!")
+    logger.info("Done processing all symbols!")
 if __name__ == "__main__":
     test_model()

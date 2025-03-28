@@ -3,7 +3,9 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
-import os
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Function to fetch stock data
 def fetch_stock_data(symbol: str, start_date: str, end_date: str):
@@ -65,7 +67,7 @@ def remove_second_line(file_path):
     if len(lines) > 1:
         with open(file_path, "w") as f:
             f.writelines([lines[0]] + lines[2:])  # Keep first line, skip second
-    print(f"✅ Cleaned second line from {file_path}")
+    logger.info(f"Cleaned second line from {file_path}")
 
 
 # Function to append new data and update CSV
@@ -74,7 +76,7 @@ def update_data(symbol):
 
     start_date = datetime(1960, 1, 1).date()  # Default start date
     end_date = datetime.today().strftime("%Y-%m-%d")
-    print(f"🔄 Updating {symbol} data from {start_date} to {end_date}...")
+    logger.info(f"Updating {symbol} data from {start_date} to {end_date}...")
 
     new_data = fetch_stock_data(symbol, start_date, end_date)
 
@@ -89,9 +91,9 @@ def update_data(symbol):
         # Save updated dataset **without duplicate headers**
         new_data.to_csv(file_path, index=False, mode='w')
         remove_second_line(file_path)  # Ensure second line is removed
-        print(f"✅ Updated dataset saved to {file_path}")
+        logger.info(f"Updated dataset saved to {file_path}")
     else:
-        print("⚠️ No new data to update.")
+        logger.info("No new data to update.")
 
 # Run the daily update
 if __name__ == "__main__":
