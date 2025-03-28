@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-db_connection_str = "mongodb://localhost:27017/"
+db_connection_str = "mongodb://mongo-db:27017/"
 db = Database(db_connection_str)
 
 
