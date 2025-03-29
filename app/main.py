@@ -142,7 +142,9 @@ async def analyze_model():
 @app.get("/tweets/{StockSymbol}")
 async def get_latest_tweets(StockSymbol: str):
     all_tweets = db.get_all_tweets()
-
+    for tweet in all_tweets:
+        if "LLM_classification" not in tweet and "subject" in tweet:
+            tweet["LLM_classification"] = analyze_tweets(tweet)
     if StockSymbol in ["AAPL", "SPY"]:
         relevant_tweets = [tweet for tweet in all_tweets if
                            isinstance(tweet, dict) and tweet.get("stock_symbol") == StockSymbol]

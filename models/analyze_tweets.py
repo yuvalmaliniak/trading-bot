@@ -1,22 +1,34 @@
 import google.generativeai as genai
+from google.api_core.exceptions import ResourceExhausted
 from db.database import Database
-import os
+import os, time
 from dotenv import load_dotenv
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 genai.configure(api_key=GEMINI_API_KEY)
 
-def get_gemini_response(question):
+def get_gemini_response(question, max_retries=5):
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel("gemini-1.5-flash")
-    response = model.generate_content(question)
-    return response.text
+
+    for attempt in range(max_retries):
+        try:
+            response = model.generate_content(question)
+            return response.text
+        except ResourceExhausted as e:
+            wait_time = 25 + attempt * 5  # exponential backoff
+            print(f"⏳ Rate limited by Gemini API (attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s...")
+            time.sleep(wait_time)
+        except Exception as e:
+            print(f"❌ Gemini API error: {str(e)}")
+            break  # for now, break on unexpected errors
+
+    return "Neutral"  # fallback if all retries fail
 
 def analyze_tweets(tweet):
-    text = tweet["snippet"]
-    prompt = f"""I will give you a tweet made by {tweet['owner']}. I will need you to CLASSIFY
-    the relation of the tweet to the stock {tweet['stock_symbol']}.
+    text = tweet["subject"]
+    prompt = f"""I will need you to CLASSIFY the relation of the tweet to the stock {tweet['stock_symbol']}.
     Tweet is as follows: {text}
     You need to response ONLY in one word out of the following options:
     - Positive  (if the tweet is positive about the stock)
