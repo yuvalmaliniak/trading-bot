@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-db_connection_str = "mongodb://localhost:27017/"
+db_connection_str = "mongodb://mongo-db:27017/"
 db = Database(db_connection_str)
 
 
@@ -162,7 +162,8 @@ async def get_latest_tweets(StockSymbol: str):
 
         updated_tweets = []
         for tweet in tweets:
-            if isinstance(tweet, dict):  # Ensure tweet is a dictionary
+            if isinstance(tweet, dict):
+                print("tweet info: before storing in DB , ", tweet)
                 tweet["stock_symbol"] = StockSymbol
                 tweet["LLM_classification"] = analyze_tweets(tweet)
                 updated_tweets.append(tweet)
