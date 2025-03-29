@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-db_connection_str = "mongodb://mongo-db:27017/"
+db_connection_str = "mongodb://localhost:27017/"
 db = Database(db_connection_str)
 
 
@@ -92,7 +92,6 @@ async def start_trading(id: str, request: Request):
             "message": f"Trading runs successfully. Visit {request.base_url}/trading/report/{user_data['email']} in your browser to view the full report",
             "user_id": id
         }
-
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error starting trading: {str(e)}")
